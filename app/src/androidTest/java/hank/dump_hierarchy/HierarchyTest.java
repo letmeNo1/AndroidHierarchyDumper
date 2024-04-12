@@ -1,6 +1,8 @@
 package hank.dump_hierarchy;
 
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
@@ -26,6 +28,7 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class HierarchyTest {
     private static final String TAG ="hank_auto" ;
@@ -128,9 +131,10 @@ public class HierarchyTest {
             } else if (msg.contains("dump")) {
                 boolean compressed = Boolean.parseBoolean(msg.split("_")[1].trim());
                 handleDumpRequest(outputStream,compressed);
-
             } else if (msg.contains("get_root")) {
                 handleStatusRequest(outputStream);
+            } else if (msg.contains("get_pic")) {
+                handlePicRequest(outputStream);
             } else {
                 String response = "Unknown request\n";
                 outputStream.write(response.getBytes());
@@ -170,6 +174,23 @@ public class HierarchyTest {
         outputStream.write(rst.getBytes());
         Log.i(TAG, "init: path = "+rst);
 
+    }
+
+
+    private void handlePicRequest(OutputStream outputStream) throws IOException {
+        UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        File screenshotFile = new File(path, "screenshot.png");
+        mDevice.takeScreenshot(screenshotFile);
+        try (FileInputStream fis = new FileInputStream(screenshotFile)) {
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = fis.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, length);
+            }
+            outputStream.flush(); // 确保所有的数据都被写入到OutputStream
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void handlePrintRequest(OutputStream outputStream) throws IOException {
