@@ -6,7 +6,7 @@ android {
     compileSdk 33
 
     defaultConfig {
-        applicationId "hank.dump_hierarchy"
+        applicationId "nico.dump_hierarchy"
         minSdk 23
         targetSdk 32
         versionCode 1

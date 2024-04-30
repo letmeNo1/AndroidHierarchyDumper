@@ -1,4 +1,4 @@
-package hank.dump_hierarchy;
+package nico.dump_hierarchy;
 
 import androidx.appcompat.app.AppCompatActivity;
 

@@ -1,4 +1,4 @@
-package com.hank.dump_hierarchy;
+package nico.dump_hierarchy;
 
 import org.junit.Test;
 

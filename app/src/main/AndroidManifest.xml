@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="hank.dump_hierarchy">
+    package="nico.dump_hierarchy">
     <uses-permission android:name="android.permission.READ_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -17,7 +17,7 @@
         android:theme="@style/Theme.Dump_hierarchy"
         tools:targetApi="31">
         <activity
-            android:name="hank.dump_hierarchy.MainActivity"
+            android:name="nico.dump_hierarchy.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

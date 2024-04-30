@@ -1,8 +1,5 @@
-package hank.dump_hierarchy;
+package nico.dump_hierarchy;
 
-
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,7 +25,6 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class HierarchyTest {
     private static final String TAG ="hank_auto" ;
