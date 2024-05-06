@@ -38,7 +38,6 @@ public class HierarchyTest {
         Context context= InstrumentationRegistry.getInstrumentation().getTargetContext();
         File filesDir = context.getFilesDir();
         path = filesDir.getPath();
-//        Log.i(TAG, "init: path = " + path);
     }
 
     @Test
@@ -125,12 +124,13 @@ public class HierarchyTest {
             if (msg.contains("print")) {
                 handlePrintRequest(outputStream);
             } else if (msg.contains("dump")) {
-                boolean compressed = Boolean.parseBoolean(msg.split("_")[1].trim());
+                boolean compressed = Boolean.parseBoolean(msg.split(":")[1].trim());
                 handleDumpRequest(outputStream,compressed);
             } else if (msg.contains("get_root")) {
                 handleStatusRequest(outputStream);
-            } else if (msg.contains("get_pic")) {
-                handlePicRequest(outputStream);
+            } else if (msg.contains("get_png_pic")) {
+                Integer quality = Integer.parseInt(msg.split(":")[1].trim());
+                handlePicRequest(outputStream,quality);
             } else {
                 String response = "Unknown request\n";
                 outputStream.write(response.getBytes());
@@ -173,10 +173,10 @@ public class HierarchyTest {
     }
 
 
-    private void handlePicRequest(OutputStream outputStream) throws IOException {
+    private void handlePicRequest(OutputStream outputStream,Integer quality) throws IOException {
         UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         File screenshotFile = new File(path, "screenshot.png");
-        mDevice.takeScreenshot(screenshotFile);
+        mDevice.takeScreenshot(screenshotFile,1.0f, quality);
         try (FileInputStream fis = new FileInputStream(screenshotFile)) {
             byte[] buffer = new byte[1024];
             int length;
