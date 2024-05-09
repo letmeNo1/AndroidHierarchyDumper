@@ -1,7 +1,10 @@
 package nico.dump_hierarchy;
 
+import android.app.UiAutomation;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -11,6 +14,7 @@ import androidx.test.uiautomator.UiDevice;
 
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -25,10 +29,13 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class HierarchyTest {
     private static final String TAG ="hank_auto" ;
     private String path;
+    private String previous_screenshot = null;
+
     private ServerSocket serverSocket;
 
 
@@ -131,6 +138,10 @@ public class HierarchyTest {
             } else if (msg.contains("get_png_pic")) {
                 Integer quality = Integer.parseInt(msg.split(":")[1].trim());
                 handlePicRequest(outputStream,quality);
+            }
+            else if (msg.contains("get_png_data")) {
+                String png = takeScreenshot();
+                outputStream.write(png.getBytes());
             } else {
                 String response = "Unknown request\n";
                 outputStream.write(response.getBytes());
@@ -172,11 +183,36 @@ public class HierarchyTest {
 
     }
 
+    public String takeScreenshot() {
+        String result;
+        // 获取 Instrumentation 实例
+        UiAutomation uiAutomation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+
+        // 通过 UiAutomation 调用 takeScreenshot 方法
+        Bitmap screenshot = uiAutomation.takeScreenshot();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        // 使用 Bitmap 的 compress 方法将 Bitmap 对象压缩为 PNG 格式
+        // 将压缩后的数据写入字节数组输出流
+        screenshot.compress(Bitmap.CompressFormat.PNG, 1, byteArrayOutputStream);
+
+        // 将字节数组输出流转换为字节数组
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        String current_screenshot = Base64.encodeToString(byteArray, Base64.DEFAULT);
+        if (Objects.equals(this.previous_screenshot, current_screenshot)){
+            result= "no change";
+        }else
+            result= "change";
+        this.previous_screenshot = current_screenshot;
+        return result;
+    }
+
 
     private void handlePicRequest(OutputStream outputStream,Integer quality) throws IOException {
         UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         File screenshotFile = new File(path, "screenshot.png");
-        mDevice.takeScreenshot(screenshotFile,1.0f, quality);
+
+        mDevice.takeScreenshot(screenshotFile,0.1f, 1);
         try (FileInputStream fis = new FileInputStream(screenshotFile)) {
             byte[] buffer = new byte[1024];
             int length;
