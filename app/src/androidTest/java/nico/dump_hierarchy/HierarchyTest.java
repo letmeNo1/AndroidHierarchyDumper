@@ -2,19 +2,18 @@ package nico.dump_hierarchy;
 
 import android.app.UiAutomation;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.Configurator;
+import androidx.test.uiautomator.Tracer;
 import androidx.test.uiautomator.UiDevice;
 
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,12 +28,13 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HierarchyTest {
     private static final String TAG ="hank_auto" ;
     private String path;
-    private String previous_screenshot = null;
+    private AccessibilityEvent lastWindowChangeEvent = null;
 
     private ServerSocket serverSocket;
 
@@ -47,9 +47,51 @@ public class HierarchyTest {
         path = filesDir.getPath();
     }
 
+    private final UiAutomation.AccessibilityEventFilter checkWindowUpdate = event -> {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            lastWindowChangeEvent = event;
+            return true;
+        }
+        return false;
+    };
+
+    private final AtomicBoolean uiChanged = new AtomicBoolean(false);
+
+    private void startWatchingUiChanges() {
+        Thread watcherThread = new Thread(() -> {
+            while (true) {
+                try {
+                    InstrumentationRegistry.getInstrumentation().getUiAutomation().executeAndWaitForEvent(
+                            // Runnable command to execute.
+                            () -> {},
+                            // Event filter.
+                            checkWindowUpdate,
+                            // Timeout (in milliseconds).
+                            5000
+                    );
+                    uiChanged.set(true);
+                } catch (TimeoutException e) {
+                    // Handle timeout exception.
+                }
+            }
+        });
+        watcherThread.start();
+    }
+
+    private String is_ui_change() {
+        if (lastWindowChangeEvent != null && uiChanged.getAndSet(false)) {
+            lastWindowChangeEvent = null;
+            return "true";
+        } else {
+            return "false";
+        }
+    }
+
+
     @Test
     public void TestCase1() {
         init();
+        startWatchingUiChanges();
         Thread serverThread = new Thread(() -> {
             try {
                 Bundle arguments = InstrumentationRegistry.getArguments();
@@ -139,8 +181,8 @@ public class HierarchyTest {
                 Integer quality = Integer.parseInt(msg.split(":")[1].trim());
                 handlePicRequest(outputStream,quality);
             }
-            else if (msg.contains("get_png_data")) {
-                String png = takeScreenshot();
+            else if (msg.contains("is_ui_change")) {
+                String png = is_ui_change();
                 outputStream.write(png.getBytes());
             } else {
                 String response = "Unknown request\n";
@@ -181,30 +223,6 @@ public class HierarchyTest {
         outputStream.write(rst.getBytes());
         Log.i(TAG, "init: path = "+rst);
 
-    }
-
-    public String takeScreenshot() {
-        String result;
-        // 获取 Instrumentation 实例
-        UiAutomation uiAutomation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
-
-        // 通过 UiAutomation 调用 takeScreenshot 方法
-        Bitmap screenshot = uiAutomation.takeScreenshot();
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-        // 使用 Bitmap 的 compress 方法将 Bitmap 对象压缩为 PNG 格式
-        // 将压缩后的数据写入字节数组输出流
-        screenshot.compress(Bitmap.CompressFormat.PNG, 1, byteArrayOutputStream);
-
-        // 将字节数组输出流转换为字节数组
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        String current_screenshot = Base64.encodeToString(byteArray, Base64.DEFAULT);
-        if (Objects.equals(this.previous_screenshot, current_screenshot)){
-            result= "no change";
-        }else
-            result= "change";
-        this.previous_screenshot = current_screenshot;
-        return result;
     }
 
 
