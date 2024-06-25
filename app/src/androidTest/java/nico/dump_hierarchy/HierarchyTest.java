@@ -2,6 +2,7 @@ package nico.dump_hierarchy;
 
 import android.app.UiAutomation;
 import android.content.Context;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
@@ -184,7 +185,11 @@ public class HierarchyTest {
             else if (msg.contains("is_ui_change")) {
                 String png = is_ui_change();
                 outputStream.write(png.getBytes());
-            } else {
+            }else if (msg.contains("sys_tools")){
+                Integer quality = Integer.parseInt(msg.split(":")[1].trim());
+                handlePicRequest(outputStream,quality);
+            }
+            else {
                 String response = "Unknown request\n";
                 outputStream.write(response.getBytes());
             }
@@ -242,6 +247,7 @@ public class HierarchyTest {
             e.printStackTrace();
         }
     }
+
 
     private void handlePrintRequest(OutputStream outputStream) throws IOException {
         String response = "200\n";
