@@ -61,16 +61,13 @@ public class HierarchyTest {
             while (true) {
                 try {
                     InstrumentationRegistry.getInstrumentation().getUiAutomation().executeAndWaitForEvent(
-                            // Runnable command to execute.
                             () -> {},
-                            // Event filter.
                             checkWindowUpdate,
-                            // Timeout (in milliseconds).
                             5000
                     );
                     uiChanged.set(true);
                 } catch (TimeoutException e) {
-                    // Handle timeout exception.
+                    continue;
                 }
             }
         });
