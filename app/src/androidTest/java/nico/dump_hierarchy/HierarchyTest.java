@@ -2,7 +2,6 @@ package nico.dump_hierarchy;
 
 import android.app.UiAutomation;
 import android.content.Context;
-import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
@@ -10,7 +9,6 @@ import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.Configurator;
-import androidx.test.uiautomator.Tracer;
 import androidx.test.uiautomator.UiDevice;
 
 import org.junit.Test;
@@ -246,11 +244,6 @@ public class HierarchyTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private void handlePicRequest2(OutputStream outputStream,Integer quality) throws IOException {
-        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-
     }
 
     private void handlePrintRequest(OutputStream outputStream) throws IOException {
