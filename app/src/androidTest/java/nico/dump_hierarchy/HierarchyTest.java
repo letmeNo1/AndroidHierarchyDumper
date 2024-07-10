@@ -1,7 +1,11 @@
 package nico.dump_hierarchy;
 
+import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
 import android.app.UiAutomation;
 import android.content.Context;
+import android.graphics.Path;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
@@ -30,7 +34,7 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class HierarchyTest {
+public class HierarchyTest extends AccessibilityService {
     private static final String TAG ="hank_auto" ;
     private String path;
     private AccessibilityEvent lastWindowChangeEvent = null;
@@ -183,6 +187,8 @@ public class HierarchyTest {
             }else if (msg.contains("sys_tools")){
                 Integer quality = Integer.parseInt(msg.split(":")[1].trim());
                 handlePicRequest(outputStream,quality);
+            }else if (msg.contains("handleMultiTouchRequest")){
+                handleMultiTouchRequest(outputStream,0,0,0,0,0,0,0,0);
             }
             else {
                 String response = "Unknown request\n";
@@ -224,6 +230,41 @@ public class HierarchyTest {
         Log.i(TAG, "init: path = "+rst);
 
     }
+
+    private void handleMultiTouchRequest(OutputStream outputStream,int startX1, int startY1, int endX1, int endY1, int startX2, int startY2, int endX2, int endY2) throws IOException {
+        // 定义第一个手指的滑动路径
+        Path path1 = new Path();
+        path1.moveTo(540, 860);
+        path1.lineTo(540, 1060);
+
+        // 定义第二个手指的滑动路径
+        Path path2 = new Path();
+        path2.moveTo(540, 1060);
+        path2.lineTo(540, 860);
+
+        // 创建手势描述并添加两个手指的滑动路径
+        GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
+        gestureBuilder.addStroke(new GestureDescription.StrokeDescription(path1, 0, 500)); // 持续时间500ms
+        gestureBuilder.addStroke(new GestureDescription.StrokeDescription(path2, 0, 500)); // 持续时间500ms
+
+        // 发送手势
+        dispatchGesture(gestureBuilder.build(), new GestureResultCallback() {
+            @Override
+            public void onCompleted(GestureDescription gestureDescription) {
+                super.onCompleted(gestureDescription);
+                // 手势完成时的回调
+            }
+
+            @Override
+            public void onCancelled(GestureDescription gestureDescription) {
+                super.onCancelled(gestureDescription);
+                // 手势取消时的回调
+            }
+        }, null);
+        outputStream.write("ok".getBytes());
+        Log.i(TAG, "init: path = "+"ok");
+    }
+
 
 
     private void handlePicRequest(OutputStream outputStream,Integer quality) throws IOException {
@@ -276,6 +317,16 @@ public class HierarchyTest {
         AccessibilityNodeInfo[] roots = (AccessibilityNodeInfo[]) method.invoke(mDevice);
 //        mDevice.waitForIdle();
         return Arrays.toString(roots);
+    }
+
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent accessibilityEvent) {
+        
+    }
+
+    @Override
+    public void onInterrupt() {
+
     }
 }
 
