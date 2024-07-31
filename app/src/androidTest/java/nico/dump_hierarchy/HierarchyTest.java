@@ -12,8 +12,14 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.BySelector;
 import androidx.test.uiautomator.Configurator;
 import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject;
+import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.UiObjectNotFoundException;
+import androidx.test.uiautomator.UiSelector;
 
 import org.junit.Test;
 
@@ -30,6 +36,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,7 +47,6 @@ public class HierarchyTest extends AccessibilityService {
     private AccessibilityEvent lastWindowChangeEvent = null;
 
     private ServerSocket serverSocket;
-
 
     private void init(){
         Configurator.getInstance().setWaitForIdleTimeout(1);
@@ -86,7 +92,6 @@ public class HierarchyTest extends AccessibilityService {
             return "false";
         }
     }
-
 
     @Test
     public void TestCase1() {
@@ -189,8 +194,17 @@ public class HierarchyTest extends AccessibilityService {
                 handlePicRequest(outputStream,quality);
             }else if (msg.contains("handleMultiTouchRequest")){
                 handleMultiTouchRequest(outputStream,0,0,0,0,0,0,0,0);
-            }
-            else {
+            } else if (msg.contains("find_element_by_query")) {
+                String type = msg.split(":")[1].trim();
+                String value = msg.split(":")[2].trim();
+
+                handleFindElementRequest(outputStream, type,value);
+            } else if (msg.contains("find_elements_by_query")) {
+                String type = msg.split(":")[1].trim();
+                String value = msg.split(":")[2].trim();
+
+                handleFindElementsRequest(outputStream, type,value);
+            }else {
                 String response = "Unknown request\n";
                 outputStream.write(response.getBytes());
             }
@@ -265,8 +279,6 @@ public class HierarchyTest extends AccessibilityService {
         Log.i(TAG, "init: path = "+"ok");
     }
 
-
-
     private void handlePicRequest(OutputStream outputStream,Integer quality) throws IOException {
         UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         File screenshotFile = new File(path, "screenshot.png");
@@ -290,6 +302,128 @@ public class HierarchyTest extends AccessibilityService {
         Log.i(TAG, "init: path = ");
     }
 
+    private BySelector buildBySelector( String type, String value) throws IOException {
+        BySelector bySelector = null;
+
+        switch (type) {
+            case "text":
+                bySelector = By.text(value);
+                break;
+            case "textContains":
+                bySelector = By.textContains(value);
+                break;
+            case "textStartsWith":
+                bySelector = By.textStartsWith(value);
+                break;
+            case "res":
+                bySelector = By.res(value);
+                break;
+            case "clazz":
+                bySelector = By.clazz(value);
+                break;
+            case "desc":
+                bySelector = By.desc(value);
+                break;
+            case "descContains":
+                bySelector = By.descContains(value);
+                break;
+            case "descStartsWith":
+                bySelector = By.descStartsWith(value);
+                break;
+            case "pkg":
+                bySelector = By.pkg(value);
+                break;
+            case "checkable":
+                bySelector = By.checkable(Boolean.parseBoolean(value));
+                break;
+            case "checked":
+                bySelector = By.checked(Boolean.parseBoolean(value));
+                break;
+            case "clickable":
+                bySelector = By.clickable(Boolean.parseBoolean(value));
+                break;
+            case "enabled":
+                bySelector = By.enabled(Boolean.parseBoolean(value));
+                break;
+            case "focusable":
+                bySelector = By.focusable(Boolean.parseBoolean(value));
+                break;
+            case "focused":
+                bySelector = By.focused(Boolean.parseBoolean(value));
+                break;
+            case "scrollable":
+                bySelector = By.scrollable(Boolean.parseBoolean(value));
+                break;
+            case "selected":
+                bySelector = By.selected(Boolean.parseBoolean(value));
+                break;
+            default:
+                throw new IOException("Unknown selector type");
+        }
+        return bySelector;
+    }
+
+    private String getElementAttributes(UiObject2 uiObject) {
+        return  "'text': '" + (uiObject.getText() != null ? uiObject.getText() : "") + "', " +
+                "'id': '" + (uiObject.getResourceName() != null ? uiObject.getResourceName() : "") + "', " +
+                "'class_name': '" + (uiObject.getClassName() != null ? uiObject.getClassName() : "") + "', " +
+                "'package': '" + (uiObject.getApplicationPackage() != null ? uiObject.getApplicationPackage() : "") + "', " +
+                "'content_desc': '" + (uiObject.getContentDescription() != null ? uiObject.getContentDescription() : "") + "', " +
+                "'checkable': '" + uiObject.isCheckable() + "', " +
+                "'checked': '" + uiObject.isChecked() + "', " +
+                "'clickable': '" + uiObject.isClickable() + "', " +
+                "'enabled': '" + uiObject.isEnabled() + "', " +
+                "'focusable': '" + uiObject.isFocusable() + "', " +
+                "'focused': '" + uiObject.isFocused() + "', " +
+                "'scrollable': '" + uiObject.isScrollable() + "', " +
+                "'long_clickable': '" + uiObject.isLongClickable() + "', " +
+                "'selected': '" + uiObject.isSelected() + "', " +
+                "'bounds': '" + uiObject.getVisibleBounds().toShortString() + "'";
+    }
+
+    private void handleFindElementRequest(OutputStream outputStream, String type, String value) throws IOException {
+        UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        BySelector bySelector;
+
+        try {
+            bySelector = buildBySelector(type,value);
+        } catch (IOException e) {
+            outputStream.write(e.getMessage().getBytes());
+            return;
+        }
+
+        UiObject2 uiObject = mDevice.findObject(bySelector);
+        String response;
+        if (uiObject != null) {
+            response = "{" +getElementAttributes(uiObject) +"}";
+        } else {
+            response = "Element not found\n";
+        }
+        outputStream.write(response.getBytes());
+    }
+
+    private void handleFindElementsRequest(OutputStream outputStream, String type, String value) throws IOException {
+        UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        BySelector bySelector;
+
+        try {
+            bySelector = buildBySelector(type,value);
+        } catch (IOException e) {
+            outputStream.write(e.getMessage().getBytes());
+            return;
+        }
+
+        List<UiObject2> uiObjects = mDevice.findObjects(bySelector);
+        StringBuilder response = new StringBuilder();
+        if (!uiObjects.isEmpty()) {
+            for (UiObject2 uiObject : uiObjects) {
+                response.append("{").append(getElementAttributes(uiObject)).append("}").append(",");
+            }
+        } else {
+            response.append("Elements not found\n");
+        }
+        outputStream.write(response.toString().getBytes());
+    }
 
     public File dumpWindowHierarchy(boolean compressed, String fileName)  {
         UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
@@ -321,7 +455,7 @@ public class HierarchyTest extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent accessibilityEvent) {
-        
+
     }
 
     @Override
@@ -329,5 +463,3 @@ public class HierarchyTest extends AccessibilityService {
 
     }
 }
-
-//
