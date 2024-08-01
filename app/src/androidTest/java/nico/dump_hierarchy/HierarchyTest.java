@@ -364,21 +364,21 @@ public class HierarchyTest extends AccessibilityService {
     }
 
     private String getElementAttributes(UiObject2 uiObject) {
-        return  "'text': '" + (uiObject.getText() != null ? uiObject.getText() : "") + "', " +
-                "'id': '" + (uiObject.getResourceName() != null ? uiObject.getResourceName() : "") + "', " +
-                "'class_name': '" + (uiObject.getClassName() != null ? uiObject.getClassName() : "") + "', " +
-                "'package': '" + (uiObject.getApplicationPackage() != null ? uiObject.getApplicationPackage() : "") + "', " +
-                "'content_desc': '" + (uiObject.getContentDescription() != null ? uiObject.getContentDescription() : "") + "', " +
-                "'checkable': '" + uiObject.isCheckable() + "', " +
-                "'checked': '" + uiObject.isChecked() + "', " +
-                "'clickable': '" + uiObject.isClickable() + "', " +
-                "'enabled': '" + uiObject.isEnabled() + "', " +
-                "'focusable': '" + uiObject.isFocusable() + "', " +
-                "'focused': '" + uiObject.isFocused() + "', " +
-                "'scrollable': '" + uiObject.isScrollable() + "', " +
-                "'long_clickable': '" + uiObject.isLongClickable() + "', " +
-                "'selected': '" + uiObject.isSelected() + "', " +
-                "'bounds': '" + uiObject.getVisibleBounds().toShortString() + "'";
+        return  "\"text\": \"" + (uiObject.getText() != null ? uiObject.getText() : "") + "\", " +
+                "\"id\": \"" + (uiObject.getResourceName() != null ? uiObject.getResourceName() : "") + "\", " +
+                "\"class_name\": \"" + (uiObject.getClassName() != null ? uiObject.getClassName() : "") + "\", " +
+                "\"package\": \"" + (uiObject.getApplicationPackage() != null ? uiObject.getApplicationPackage() : "") + "\", " +
+                "\"content_desc\": \"" + (uiObject.getContentDescription() != null ? uiObject.getContentDescription() : "") + "\", " +
+                "\"checkable\": \"" + uiObject.isCheckable() + "\", " +
+                "\"checked\": \"" + uiObject.isChecked() + "\", " +
+                "\"clickable\": \"" + uiObject.isClickable() + "\", " +
+                "\"enabled\": \"" + uiObject.isEnabled() + "\", " +
+                "\"focusable\": \"" + uiObject.isFocusable() + "\", " +
+                "\"focused\": \"" + uiObject.isFocused() + "\", " +
+                "\"scrollable\": \"" + uiObject.isScrollable() + "\", " +
+                "\"long_clickable\": \"" + uiObject.isLongClickable() + "\", " +
+                "\"selected\": \"" + uiObject.isSelected() + "\", " +
+                "\"bounds\": \"" + uiObject.getVisibleBounds().toShortString() + "\"";
     }
 
     private void handleFindElementRequest(OutputStream outputStream, String type, String value) throws IOException {
@@ -407,7 +407,7 @@ public class HierarchyTest extends AccessibilityService {
         BySelector bySelector;
 
         try {
-            bySelector = buildBySelector(type,value);
+            bySelector = buildBySelector(type, value);
         } catch (IOException e) {
             outputStream.write(e.getMessage().getBytes());
             return;
@@ -416,8 +416,12 @@ public class HierarchyTest extends AccessibilityService {
         List<UiObject2> uiObjects = mDevice.findObjects(bySelector);
         StringBuilder response = new StringBuilder();
         if (!uiObjects.isEmpty()) {
-            for (UiObject2 uiObject : uiObjects) {
-                response.append("{").append(getElementAttributes(uiObject)).append("}").append(",");
+            for (int i = 0; i < uiObjects.size(); i++) {
+                UiObject2 uiObject = uiObjects.get(i);
+                response.append("{").append(getElementAttributes(uiObject)).append("}");
+                if (i < uiObjects.size() - 1) {
+                    response.append(",");
+                }
             }
         } else {
             response.append("Elements not found\n");
