@@ -195,13 +195,15 @@ public class HierarchyTest extends AccessibilityService {
             }else if (msg.contains("handleMultiTouchRequest")){
                 handleMultiTouchRequest(outputStream,0,0,0,0,0,0,0,0);
             } else if (msg.contains("find_element_by_query")) {
-                String type = msg.split(":")[1].trim();
-                String value = msg.split(":")[2].trim();
+                String[] parts = msg.split(":", 3); // 限制分割次数为3，确保value包含所有内容
+                String type = parts[1].trim();
+                String value = parts[2].trim();
 
                 handleFindElementRequest(outputStream, type,value);
             } else if (msg.contains("find_elements_by_query")) {
-                String type = msg.split(":")[1].trim();
-                String value = msg.split(":")[2].trim();
+                String[] parts = msg.split(":", 3); // 限制分割次数为3，确保value包含所有内容
+                String type = parts[1].trim();
+                String value = parts[2].trim();
 
                 handleFindElementsRequest(outputStream, type,value);
             }else {
