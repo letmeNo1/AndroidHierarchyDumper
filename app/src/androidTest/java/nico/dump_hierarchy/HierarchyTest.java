@@ -1,5 +1,7 @@
 package nico.dump_hierarchy;
 
+import static androidx.test.InstrumentationRegistry.getContext;
+
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.app.UiAutomation;
@@ -15,6 +17,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.BySelector;
 import androidx.test.uiautomator.Configurator;
+import androidx.test.uiautomator.StaleObjectException;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObject2;
@@ -23,12 +26,15 @@ import androidx.test.uiautomator.UiSelector;
 
 import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
@@ -101,7 +107,7 @@ public class HierarchyTest extends AccessibilityService {
             try {
                 Bundle arguments = InstrumentationRegistry.getArguments();
                 String portString = arguments.getString("port");
-                int port = portString != null ? Integer.parseInt(portString) : 9000; // 使用默认值9000，如果没有提供参数
+                int port = portString != null ? Integer.parseInt(portString) : 8000; // 使用默认值9000，如果没有提供参数
                 InetAddress serverAddress = InetAddress.getByName("localhost");
                 serverSocket = new ServerSocket(port, 0, serverAddress);
                 Log.i(TAG, "Server is listening on: " + serverAddress.getHostAddress() + ":" + portString);
@@ -299,7 +305,7 @@ public class HierarchyTest extends AccessibilityService {
     }
 
     private void handlePrintRequest(OutputStream outputStream) throws IOException {
-        String response = "200\n";
+        String response = "HTTP/1.1 200 OK\n";
         outputStream.write(response.getBytes());
         Log.i(TAG, "init: path = ");
     }
@@ -317,20 +323,17 @@ public class HierarchyTest extends AccessibilityService {
             case "textStartsWith":
                 bySelector = By.textStartsWith(value);
                 break;
-            case "res":
+            case "id":
                 bySelector = By.res(value);
                 break;
-            case "clazz":
+            case "class":
                 bySelector = By.clazz(value);
                 break;
-            case "desc":
+            case "content_desc":
                 bySelector = By.desc(value);
                 break;
-            case "descContains":
+            case "content_descContains":
                 bySelector = By.descContains(value);
-                break;
-            case "descStartsWith":
-                bySelector = By.descStartsWith(value);
                 break;
             case "pkg":
                 bySelector = By.pkg(value);
@@ -388,18 +391,36 @@ public class HierarchyTest extends AccessibilityService {
         BySelector bySelector;
 
         try {
-            bySelector = buildBySelector(type,value);
+            bySelector = buildBySelector(type, value);
         } catch (IOException e) {
             outputStream.write(e.getMessage().getBytes());
             return;
         }
 
-        UiObject2 uiObject = mDevice.findObject(bySelector);
+        UiObject2 uiObject = null;
+        int retryCount = 3; // 重试次数
+        while (retryCount > 0) {
+            try {
+                uiObject = mDevice.findObject(bySelector);
+                if (uiObject != null) {
+                    // 尝试访问对象属性
+                    String text = uiObject.getText();
+                    break; // 如果成功找到对象并访问其属性，则退出循环
+                }
+            } catch (StaleObjectException e) {
+                // 捕获异常并重新查找对象
+                mDevice.waitForIdle(3000);
+            }
+            retryCount--;
+        }
+
         String response;
         if (uiObject != null) {
-            response = "{" +getElementAttributes(uiObject) +"}";
+            response = "{" + getElementAttributes(uiObject) + "}";
+            Log.d(TAG, "found element" + response);
         } else {
-            response = "Element not found\n";
+            response = "Element not found";
+            Log.d(TAG, "Element not found" + response);
         }
         outputStream.write(response.getBytes());
     }
@@ -447,6 +468,19 @@ public class HierarchyTest extends AccessibilityService {
         }
 //        mDevice.waitForIdle();
         return file;
+    }
+
+    public void dumpWindowHierarchyAndPrint(boolean compressed) {
+        UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        mDevice.setCompressedLayoutHeirarchy(compressed);
+
+        StringWriter stringWriter = new StringWriter();
+        // 将 UI 层次结构转储到 StringWriter 中
+        mDevice.dumpWindowHierarchy(String.valueOf(stringWriter));
+
+        // 将 StringWriter 的内容打印到日志中
+        String hierarchyDump = stringWriter.toString();
+        Log.d(TAG, hierarchyDump);
     }
 
     public String getWindowRoots() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
