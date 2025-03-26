@@ -161,10 +161,16 @@ public class HierarchyTest extends AccessibilityService {
             if (parts.length >= 3) request.put("protocol", parts[2]);
         }
 
-        int qIndex = request.get("path").indexOf('?');
-        if (qIndex != -1) {
-            request.put("query", request.get("path").substring(qIndex + 1));
-            request.put("path", request.get("path").substring(0, qIndex));
+        // 对 path 进行空值检查
+        String path = request.get("path");
+        if (path != null) {
+            int qIndex = path.indexOf('?');
+            if (qIndex != -1) {
+                request.put("query", path.substring(qIndex + 1));
+                request.put("path", path.substring(0, qIndex));
+            } else {
+                request.put("query", "");
+            }
         } else {
             request.put("query", "");
         }
