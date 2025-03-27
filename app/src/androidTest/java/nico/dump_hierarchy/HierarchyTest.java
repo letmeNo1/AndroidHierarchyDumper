@@ -62,9 +62,18 @@ public class HierarchyTest extends AccessibilityService {
         path = filesDir.getPath();
     }
 
+    private final UiAutomation.AccessibilityEventFilter checkWindowUpdate = event -> {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            lastWindowChangeEvent = event;
+            return true;
+        }
+        return false;
+    };
+
     @Test
     public void TestCase1() {
         init();
+        startWatchingUiChanges();
         startHttpServer();
         while (true) {
             try {
@@ -326,15 +335,6 @@ public class HierarchyTest extends AccessibilityService {
         return screenshotFile;
     }
 
-    private String is_ui_change() {
-        if (lastWindowChangeEvent != null && uiChanged.getAndSet(false)) {
-            lastWindowChangeEvent = null;
-            return "true";
-        } else {
-            return "false";
-        }
-    }
-
     private BySelector buildBySelector(String type, String value) throws IOException {
         BySelector bySelector = null;
 
@@ -440,6 +440,33 @@ public class HierarchyTest extends AccessibilityService {
         method.setAccessible(true);
         AccessibilityNodeInfo[] roots = (AccessibilityNodeInfo[]) method.invoke(mDevice);
         return Arrays.toString(roots);
+    }
+
+    private void startWatchingUiChanges() {
+        Thread watcherThread = new Thread(() -> {
+            while (true) {
+                try {
+                    InstrumentationRegistry.getInstrumentation().getUiAutomation().executeAndWaitForEvent(
+                            () -> {},
+                            checkWindowUpdate,
+                            5000
+                    );
+                    uiChanged.set(true);
+                } catch (TimeoutException e) {
+                    continue;
+                }
+            }
+        });
+        watcherThread.start();
+    }
+
+    private String is_ui_change() {
+        if (lastWindowChangeEvent != null && uiChanged.getAndSet(false)) {
+            lastWindowChangeEvent = null;
+            return "true";
+        } else {
+            return "false";
+        }
     }
 
     @Override
