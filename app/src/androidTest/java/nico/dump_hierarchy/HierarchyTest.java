@@ -59,8 +59,13 @@ public class HierarchyTest extends AccessibilityService {
         Configurator.getInstance().setWaitForSelectorTimeout(1);
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         File filesDir = context.getFilesDir();
+
         path = filesDir.getPath();
+        initialize();
+
     }
+
+
 
     private final UiAutomation.AccessibilityEventFilter checkWindowUpdate = event -> {
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
@@ -329,9 +334,15 @@ public class HierarchyTest extends AccessibilityService {
     }
 
     private File takeScreenshot(int quality) throws IOException {
-        File screenshotFile = new File(path, "screenshot.png");
+        File screenshotFile = new File(path, "screenshot.webp");
         UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        mDevice.takeScreenshot(screenshotFile, 0.1f, quality);
+        FileScreenshotWriter writer = new FileScreenshotWriter(mDevice);
+        boolean success = writer.writeScreenshotToFile(screenshotFile, quality);
+        if (success) {
+            System.out.println("截图已写入: " + screenshotFile.getPath());
+        } else {
+            System.out.println("写入失败");
+        }
         return screenshotFile;
     }
 

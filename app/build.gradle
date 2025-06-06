@@ -3,39 +3,50 @@ plugins {
 }
 
 android {
-    compileSdk 33
+    // 编译SDK版本
+    compileSdk 34
 
     defaultConfig {
+        // 应用实际安装包名
         applicationId "nico.dump_hierarchy"
-        minSdk 23
-        targetSdk 32
+        minSdk 24
+        targetSdk 34
         versionCode 1
-        versionName "1.4"
+        versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-    testOptions {
-        unitTests.includeAndroidResources false
-    }
+
+    // 关键配置：命名空间，必须与applicationId一致
+    namespace 'nico.dump_hierarchy'
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            debuggable true
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    buildFeatures {
+        viewBinding true
+    }
 }
 
 dependencies {
-    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    // UI自动化测试依赖
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
 }

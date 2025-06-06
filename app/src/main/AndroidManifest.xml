@@ -4,6 +4,8 @@
     package="nico.dump_hierarchy">
     <uses-permission android:name="android.permission.READ_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_FRAME_BUFFER"
+        tools:ignore="ProtectedPermissions" />
 
 
     <application
