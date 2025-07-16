@@ -3,6 +3,7 @@ plugins {
 }
 
 android {
+    namespace 'nico.dump_hierarchy' // 添加命名空间声明
     compileSdk 33
 
     defaultConfig {
