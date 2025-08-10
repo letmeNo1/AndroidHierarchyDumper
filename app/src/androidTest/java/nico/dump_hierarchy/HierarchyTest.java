@@ -9,6 +9,7 @@ import android.content.Context;
 import android.graphics.Path;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -51,7 +52,7 @@ public class HierarchyTest extends AccessibilityService {
     private String path;
     private AccessibilityEvent lastWindowChangeEvent = null;
     private ServerSocket serverSocket;
-
+    private TouchController touchController;  // 添加TouchController实例
     private final AtomicBoolean uiChanged = new AtomicBoolean(false);
 
     private void init() {
@@ -59,6 +60,8 @@ public class HierarchyTest extends AccessibilityService {
         Configurator.getInstance().setWaitForSelectorTimeout(1);
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         File filesDir = context.getFilesDir();
+        touchController = new TouchController(InstrumentationRegistry.getInstrumentation());
+
         path = filesDir.getPath();
     }
 
@@ -136,6 +139,9 @@ public class HierarchyTest extends AccessibilityService {
                     case "/get_root":
                         handleGetRootRequest(os);
                         break;
+                    case "/click":
+                        handleClickRequest(os,params);
+                        break;
                     default:
                         sendResponse(os, 404, "text/plain", "Not Found");
                 }
@@ -153,6 +159,46 @@ public class HierarchyTest extends AccessibilityService {
     private void handleHealthRequest(OutputStream os) throws IOException {
         String responseText = "server is running";
         sendResponse(os, 200, "text/plain", responseText);
+    }
+
+    /**
+     * 处理点击请求：通过坐标直接调用TouchController执行点击
+     */
+    private void handleClickRequest(OutputStream os, Map<String, String> params) throws IOException {
+        // 获取坐标参数（从请求参数中解析x和y）
+        String xStr = params.get("x");
+        String yStr = params.get("y");
+
+        // 参数校验
+        if (xStr == null || yStr == null) {
+            sendResponse(os, 400, "text/plain", "Missing parameters: x and y are required");
+            return;
+        }
+
+        try {
+            // 转换坐标为浮点数
+            float x = Float.parseFloat(xStr);
+            float y = Float.parseFloat(yStr);
+
+            // 调用TouchController执行点击（按下->抬起）
+            boolean downSuccess = touchController.touchDown(x, y);
+            // 增加微小延迟，模拟真实点击的按下-抬起间隔
+            SystemClock.sleep(50);
+            boolean upSuccess = touchController.touchUp(x, y);
+
+            // 根据执行结果返回响应
+            if (downSuccess && upSuccess) {
+                sendResponse(os, 200, "text/plain", "Click at (" + x + ", " + y + ") success");
+            } else {
+                sendResponse(os, 500, "text/plain", "Click failed (down: " + downSuccess + ", up: " + upSuccess + ")");
+            }
+        } catch (NumberFormatException e) {
+            // 处理坐标格式错误
+            sendResponse(os, 400, "text/plain", "Invalid coordinates: x and y must be numbers");
+        } catch (Exception e) {
+            // 处理其他异常
+            sendResponse(os, 500, "text/plain", "Click error: " + e.getMessage());
+        }
     }
 
 
@@ -416,12 +462,8 @@ public class HierarchyTest extends AccessibilityService {
         UiDevice mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         int retryCount = 3;
         while (retryCount > 0) {
-            try {
-                UiObject2 element = mDevice.findObject(selector);
-                if (element != null) return element;
-            } catch (StaleObjectException e) {
-                mDevice.waitForIdle(3000);
-            }
+            UiObject2 element = mDevice.findObject(selector);
+            if (element != null) return element;
             retryCount--;
         }
         return null;
@@ -443,22 +485,36 @@ public class HierarchyTest extends AccessibilityService {
     }
 
     private void startWatchingUiChanges() {
+        // 添加循环控制标志，避免无限循环无法终止
+        AtomicBoolean isRunning = new AtomicBoolean(true);
+
         Thread watcherThread = new Thread(() -> {
-            while (true) {
+            while (isRunning.get()) { // 用标志位控制循环
                 try {
+                    // 延长超时时间到15秒，减少频繁超时
                     InstrumentationRegistry.getInstrumentation().getUiAutomation().executeAndWaitForEvent(
-                            () -> {},
-                            checkWindowUpdate,
-                            5000
+                            () -> {}, // 前置操作（无实际逻辑可留空）
+                            checkWindowUpdate, // 事件条件
+                            15000 // 超时时间延长至15000ms
                     );
+                    // 只有收到符合条件的事件时，才标记UI变化
                     uiChanged.set(true);
+                    Log.d("WatcherThread", "检测到UI变化");
                 } catch (TimeoutException e) {
-                    continue;
+                    // 仅打印超时日志，不抛出异常，让线程继续循环
+                    Log.w("WatcherThread", "超时未检测到UI事件，继续等待...");
+                    // 可选：超时后也可以标记UI变化（根据业务需求）
+                    // uiChanged.set(false);
+                } catch (Exception e) {
+                    // 捕获其他异常（如UiAutomation被销毁），终止循环
+                    Log.e("WatcherThread", "监听线程发生错误，停止监听", e);
+                    isRunning.set(false); // 终止循环
                 }
             }
         });
         watcherThread.start();
     }
+
 
     private String is_ui_change() {
         if (lastWindowChangeEvent != null && uiChanged.getAndSet(false)) {
