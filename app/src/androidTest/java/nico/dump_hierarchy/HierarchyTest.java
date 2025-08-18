@@ -142,6 +142,15 @@ public class HierarchyTest extends AccessibilityService {
                     case "/click":
                         handleClickRequest(os,params);
                         break;
+                    case "/touch_down": // 新增：单点按下
+                        handleTouchDownRequest(os, params);
+                        break;
+                    case "/touch_up": // 新增：单点抬起
+                        handleTouchUpRequest(os, params);
+                        break;
+                    case "/touch_move": // 新增：滑动
+                        handleTouchMoveRequest(os, params);
+                        break;
                     default:
                         sendResponse(os, 404, "text/plain", "Not Found");
                 }
@@ -257,6 +266,105 @@ public class HierarchyTest extends AccessibilityService {
         }
         return params;
     }
+
+    /**
+     * 处理单点按下请求（仅按下不抬起）
+     */
+    private void handleTouchDownRequest(OutputStream os, Map<String, String> params) throws IOException {
+        // 解析坐标参数
+        String xStr = params.get("x");
+        String yStr = params.get("y");
+        if (xStr == null || yStr == null) {
+            sendResponse(os, 400, "text/plain", "Missing parameters: x and y are required");
+            return;
+        }
+
+        try {
+            float x = Float.parseFloat(xStr);
+            float y = Float.parseFloat(yStr);
+            // 调用TouchController执行按下
+            boolean success = touchController.touchDown(x, y);
+            if (success) {
+                sendResponse(os, 200, "text/plain", "TouchDown at (" + x + ", " + y + ") success");
+            } else {
+                sendResponse(os, 500, "text/plain", "TouchDown failed");
+            }
+        } catch (NumberFormatException e) {
+            sendResponse(os, 400, "text/plain", "Invalid coordinates: x and y must be numbers");
+        } catch (Exception e) {
+            sendResponse(os, 500, "text/plain", "TouchDown error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 处理单点抬起请求（需与之前的touchDown对应）
+     */
+    private void handleTouchUpRequest(OutputStream os, Map<String, String> params) throws IOException {
+        // 解析坐标参数（需与按下坐标一致，确保抬起对应点）
+        String xStr = params.get("x");
+        String yStr = params.get("y");
+        if (xStr == null || yStr == null) {
+            sendResponse(os, 400, "text/plain", "Missing parameters: x and y are required");
+            return;
+        }
+
+        try {
+            float x = Float.parseFloat(xStr);
+            float y = Float.parseFloat(yStr);
+            // 调用TouchController执行抬起
+            boolean success = touchController.touchUp(x, y);
+            if (success) {
+                sendResponse(os, 200, "text/plain", "TouchUp at (" + x + ", " + y + ") success");
+            } else {
+                sendResponse(os, 500, "text/plain", "TouchUp failed");
+            }
+        } catch (NumberFormatException e) {
+            sendResponse(os, 400, "text/plain", "Invalid coordinates: x and y must be numbers");
+        } catch (Exception e) {
+            sendResponse(os, 500, "text/plain", "TouchUp error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 处理滑动请求（从起点(x1,y1)滑动到终点(x2,y2)，支持自定义滑动时长）
+     */
+    /**
+     * 处理触摸移动请求（基于MotionEvent的连续移动，需配合touchDown和touchUp使用）
+     */
+    private void handleTouchMoveRequest(OutputStream os, Map<String, String> params) throws IOException {
+        // 解析当前移动坐标参数
+        String xStr = params.get("x");
+        String yStr = params.get("y");
+
+        // 参数校验
+        if (xStr == null || yStr == null) {
+            sendResponse(os, 400, "text/plain", "Missing parameters: x and y are required");
+            return;
+        }
+
+        try {
+            // 转换坐标为浮点数
+            float x = Float.parseFloat(xStr);
+            float y = Float.parseFloat(yStr);
+
+            // 调用TouchController执行移动（基于MotionEvent的单点连续移动）
+            boolean success = touchController.touchMove(x, y);
+
+            // 根据执行结果返回响应
+            if (success) {
+                sendResponse(os, 200, "text/plain", "TouchMove to (" + x + ", " + y + ") success");
+            } else {
+                sendResponse(os, 500, "text/plain", "TouchMove failed");
+            }
+        } catch (NumberFormatException e) {
+            // 处理坐标格式错误
+            sendResponse(os, 400, "text/plain", "Invalid coordinates: x and y must be numbers");
+        } catch (Exception e) {
+            // 处理其他异常
+            sendResponse(os, 500, "text/plain", "TouchMove error: " + e.getMessage());
+        }
+    }
+
 
     private void handleDumpRequest(OutputStream os, Map<String, String> params) throws IOException {
         boolean compressed = Boolean.parseBoolean(params.getOrDefault("compressed", "false"));
