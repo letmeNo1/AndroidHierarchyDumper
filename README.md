@@ -482,9 +482,6 @@ curl -X POST http://localhost:9008/execute_json_script \
   `{"success":false, "message":"未知动作类型：xxx"}`  
 
 
-以上内容保留了原有接口说明的结构和其他动作的信息，同时基于 `HierarchyTest.java` 中 `click` 动作的实现逻辑，补充了其详细说明、示例及错误场景，确保文档的完整性和准确性。
-
-
 ### **错误处理**
 - **JSON 格式错误**：返回 `400` 状态码，提示“解析JSON脚本失败”。  
 - **动作缺少字段**：如缺少 `type` 或 `params`，对应动作标记为失败，整体 `success` 为 `false`。  
