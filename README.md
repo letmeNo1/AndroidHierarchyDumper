@@ -308,6 +308,9 @@ curl -X POST http://localhost:9008/input \
 }
 ```
 
+以下是结合你提供的 `HierarchyTest.java` 代码，在保留原有内容基础上补充完整的 `/execute_json_script` 接口文档（含 `click` 动作详细说明）：
+
+
 ### 12. 批量脚本示例（`/execute_json_script`）
 `execute_json_script` 是一个支持批量执行多步骤操作的核心接口，允许通过 JSON 格式的脚本定义一系列连续动作（如点击、输入、滑动等），适用于复杂场景的自动化操作。以下是详细介绍：
 
@@ -327,10 +330,18 @@ curl -X POST http://localhost:9008/input \
 
 ### **支持的动作类型及参数**
 #### 1. 坐标点击（`type: "click"`）
-- **功能**：直接按指定坐标执行点击。  
+- **功能**：直接按指定坐标执行点击（模拟真实点击流程：按下→50ms延迟→抬起）。  
 - **`params` 字段**：  
-  - `x`：横坐标（数字，必填）。  
-  - `y`：纵坐标（数字，必填）。  
+  - `x`：横坐标（数字，必填，单位：像素）。  
+  - `y`：纵坐标（数字，必填，单位：像素）。  
+- **代码逻辑说明**：  
+  从 `HierarchyTest.java` 可知，`click` 动作通过 `touchController` 执行底层触摸事件：  
+  ```java
+  // 执行点击（按下→延迟→抬起）
+  boolean clickSuccess = touchController.touchDown(x, y);
+  SystemClock.sleep(50); // 模拟按下时长
+  clickSuccess &= touchController.touchUp(x, y);
+  ```  
 
 
 #### 2. 查找并点击（`type: "find_and_click"`）
@@ -361,10 +372,18 @@ curl -X POST http://localhost:9008/input \
 
 
 ### **请求示例（curl）**
+包含 `click` 动作与其他动作的组合示例：
 ```bash
 curl -X POST http://localhost:9008/execute_json_script \
   -H "Content-Type: application/json" \
   -d '[
+    {
+      "type": "click",
+      "params": {
+        "x": 300,  # 左上角菜单按钮坐标
+        "y": 150
+      }
+    },
     {
       "type": "find_and_click",
       "params": {
@@ -390,6 +409,13 @@ curl -X POST http://localhost:9008/execute_json_script \
         "steps": [{"x":500,"y":1000}, {"x":500,"y":500}],
         "duration": 800
       }
+    },
+    {
+      "type": "click",
+      "params": {
+        "x": 900,  # 右下角确认按钮坐标
+        "y": 1800
+      }
     }
   ]'
 ```
@@ -400,19 +426,27 @@ curl -X POST http://localhost:9008/execute_json_script \
 ```json
 {
   "success": true,  // 整体是否成功（所有动作均成功为true）
-  "totalActions": 3,  // 总动作数
-  "results": [  // 每个动作的执行结果（按顺序）
+  "totalActions": 5,  // 总动作数
+  "results": [
     {
-      "actionIndex": 0,  // 动作索引（从0开始）
-      "actionType": "find_and_click",
+      "actionIndex": 0,
+      "actionType": "click",
       "success": true,
-      "message": "查找并点击成功",
-      "element_bounds": "[400,800][680,920]",
-      "click_x": 540,
-      "click_y": 860
+      "message": "坐标点击成功",
+      "x": 300.0,
+      "y": 150.0
     },
     {
       "actionIndex": 1,
+      "actionType": "find_and_click",
+      "success": true,
+      "message": "查找并点击成功",
+      "element_bounds": "[600,480][800,580]",
+      "click_x": 700,
+      "click_y": 530
+    },
+    {
+      "actionIndex": 2,
       "actionType": "find_and_input",
       "success": true,
       "message": "输入成功",
@@ -420,17 +454,35 @@ curl -X POST http://localhost:9008/execute_json_script \
       "actual_text": "test_user"
     },
     {
-      "actionIndex": 2,
+      "actionIndex": 3,
       "actionType": "swipe_sequence",
       "success": true,
       "message": "滑动序列执行成功",
       "start": {"x": 500, "y": 1500},
       "end": {"x": 500, "y": 500},
       "step_count": 2
+    },
+    {
+      "actionIndex": 4,
+      "actionType": "click",
+      "success": true,
+      "message": "坐标点击成功",
+      "x": 900.0,
+      "y": 1800.0
     }
   ]
 }
 ```
+
+
+### **错误场景说明**
+- 若 `click` 动作缺少 `x` 或 `y` 参数，响应将提示：  
+  `{"success":false, "message":"click动作缺少参数x或y"}`  
+- 若动作类型不存在，响应将提示：  
+  `{"success":false, "message":"未知动作类型：xxx"}`  
+
+
+以上内容保留了原有接口说明的结构和其他动作的信息，同时基于 `HierarchyTest.java` 中 `click` 动作的实现逻辑，补充了其详细说明、示例及错误场景，确保文档的完整性和准确性。
 
 
 ### **错误处理**
