@@ -309,58 +309,141 @@ curl -X POST http://localhost:9008/input \
 ```
 
 ### 12. 批量脚本示例（`/execute_json_script`）
-请求体为 JSON 数组，支持动作类型：`click`、`find_and_click`、`find_and_input`、`swipe_sequence`。
+`execute_json_script` 是一个支持批量执行多步骤操作的核心接口，允许通过 JSON 格式的脚本定义一系列连续动作（如点击、输入、滑动等），适用于复杂场景的自动化操作。以下是详细介绍：
 
-```json
-[
-  {
-    "type": "find_and_click",
-    "params": {
-      "type": "text",
-      "value": "登录",
-      "timeout": 3000
+
+### **核心功能**
+- 接收一个包含多个动作的 JSON 脚本，按顺序执行所有动作。
+- 支持动作间共享元素缓存（例如，前一个动作查找的元素可被后续动作复用）。
+- 返回每个动作的执行结果及整体执行状态，便于调试和流程控制。
+
+
+### **请求方式与参数**
+- **请求方法**：`POST`  
+- **请求体**：JSON 数组，每个元素为一个动作对象，包含以下字段：  
+  - `type`：动作类型（必填，支持 `click`/`find_and_click`/`find_and_input`/`swipe_sequence`）。  
+  - `params`：动作参数（必填，根据 `type` 不同而变化，详见下方动作说明）。  
+
+
+### **支持的动作类型及参数**
+#### 1. 坐标点击（`type: "click"`）
+- **功能**：直接按指定坐标执行点击。  
+- **`params` 字段**：  
+  - `x`：横坐标（数字，必填）。  
+  - `y`：纵坐标（数字，必填）。  
+
+
+#### 2. 查找并点击（`type: "find_and_click"`）
+- **功能**：先按属性查找元素，再点击元素中心。  
+- **`params` 字段**：  
+  - `type`：查找类型（字符串，必填，如 `text`/`resourceId`/`className`）。  
+  - `value`：查找值（字符串，必填，与 `type` 对应，如文本内容、资源 ID）。  
+  - `timeout`：超时时间（数字，可选，默认 5000 毫秒，超过时间未找到元素则失败）。  
+
+
+#### 3. 查找并输入（`type: "find_and_input"`）
+- **功能**：先按属性查找输入框，再输入文本（默认清空原有内容）。  
+- **`params` 字段**：  
+  - `type`：查找类型（字符串，必填，如 `resourceId`）。  
+  - `value`：查找值（字符串，必填，如输入框的资源 ID）。  
+  - `text`：要输入的文本（字符串，必填）。  
+  - `clear`：是否清空原有内容（布尔值，可选，默认 `true`）。  
+  - `timeout`：超时时间（数字，可选，默认 5000 毫秒）。  
+
+
+#### 4. 滑动序列（`type: "swipe_sequence"`）
+- **功能**：按指定起点和多步滑动路径执行滑动（按下→分步移动→抬起）。  
+- **`params` 字段**：  
+  - `startX`：滑动起点横坐标（数字，必填）。  
+  - `startY`：滑动起点纵坐标（数字，必填）。  
+  - `steps`：滑动步骤数组（数组，必填，至少 1 步，每步为 `{x: 数字, y: 数字}`）。  
+  - `duration`：总滑动时长（数字，可选，默认 500 毫秒，分配到每步的间隔时间）。  
+
+
+### **请求示例（curl）**
+```bash
+curl -X POST http://localhost:9008/execute_json_script \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "type": "find_and_click",
+      "params": {
+        "type": "text",
+        "value": "登录",
+        "timeout": 3000
+      }
+    },
+    {
+      "type": "find_and_input",
+      "params": {
+        "type": "resourceId",
+        "value": "com.example:id/et_username",
+        "text": "test_user",
+        "clear": true
+      }
+    },
+    {
+      "type": "swipe_sequence",
+      "params": {
+        "startX": 500,
+        "startY": 1500,
+        "steps": [{"x":500,"y":1000}, {"x":500,"y":500}],
+        "duration": 800
+      }
     }
-  },
-  {
-    "type": "find_and_input",
-    "params": {
-      "type": "resourceId",
-      "value": "com.example:id/et_username",
-      "text": "test_user",
-      "clear": true
-    }
-  },
-  {
-    "type": "swipe_sequence",
-    "params": {
-      "startX": 300,
-      "startY": 1500,
-      "steps": [{"x": 400, "y": 1500}, {"x": 800, "y": 1500}],
-      "duration": 800
-    }
-  }
-]
+  ]'
 ```
 
-响应示例：
+
+### **响应格式**
+返回 JSON 对象，包含整体执行状态和每个动作的详细结果：
 ```json
 {
-  "success": true,
-  "totalActions": 3,
-  "results": [
+  "success": true,  // 整体是否成功（所有动作均成功为true）
+  "totalActions": 3,  // 总动作数
+  "results": [  // 每个动作的执行结果（按顺序）
     {
-      "actionIndex": 0,
+      "actionIndex": 0,  // 动作索引（从0开始）
       "actionType": "find_and_click",
       "success": true,
       "message": "查找并点击成功",
-      "element_bounds": "[100,200][300,400]",
-      "click_x": 200,
-      "click_y": 300
+      "element_bounds": "[400,800][680,920]",
+      "click_x": 540,
+      "click_y": 860
     },
-    // ... 其他动作结果
+    {
+      "actionIndex": 1,
+      "actionType": "find_and_input",
+      "success": true,
+      "message": "输入成功",
+      "input_text": "test_user",
+      "actual_text": "test_user"
+    },
+    {
+      "actionIndex": 2,
+      "actionType": "swipe_sequence",
+      "success": true,
+      "message": "滑动序列执行成功",
+      "start": {"x": 500, "y": 1500},
+      "end": {"x": 500, "y": 500},
+      "step_count": 2
+    }
   ]
 }
 ```
+
+
+### **错误处理**
+- **JSON 格式错误**：返回 `400` 状态码，提示“解析JSON脚本失败”。  
+- **动作缺少字段**：如缺少 `type` 或 `params`，对应动作标记为失败，整体 `success` 为 `false`。  
+- **单个动作失败**：不中断后续动作（可通过代码修改为“失败即停止”），整体 `success` 为 `false`。  
+- **执行异常**：如参数类型错误、元素未找到等，在对应动作结果中返回错误消息。  
+
+
+### **关键特性**
+- **原子性**：按顺序执行动作，前一个动作的结果不强制影响后一个（可自定义中断逻辑）。  
+- **元素缓存**：`find_and_click` 等查找动作会将元素存入缓存（`elementCache`），供后续动作复用（需代码中显式调用）。  
+- **灵活性**：支持通过 `duration` 控制滑动速度、`timeout` 控制元素查找等待时间，适配不同场景。
 
 
 ## 权限说明
