@@ -79,7 +79,236 @@ AndroidHierarchyDumper 是一个基于 Android 平台的 UI 自动化工具，�
 | `/execute_json_script` | POST | 批量执行动作             | 请求体：JSON 数组（包含多个动作，见下方示例）                            | 执行结果 JSON（包含总状态和每个动作的详细结果）                              |
 
 
-### 批量脚本示例（`/execute_json_script`）
+以下是除 `/execute_json_script` 外其他核心接口的详细使用示例，包含请求方式、参数说明、请求示例（基于 `curl`）及响应示例：
+
+
+### 1. 服务状态检查 `/status`
+- **功能**：检查服务是否正常运行  
+- **请求方法**：`GET`  
+- **参数**：无  
+
+**请求示例**：  
+```bash
+curl http://localhost:9008/status
+```
+
+**响应示例**（文本）：  
+```text
+server is running
+```
+
+
+### 2. 获取UI层级结构 `/dump`
+- **功能**：获取当前屏幕的UI层级结构（XML格式）  
+- **请求方法**：`GET`  
+- **参数**：无  
+
+**请求示例**：  
+```bash
+curl http://localhost:9008/dump -o hierarchy.xml  # 保存为本地文件
+```
+
+**响应示例**（XML片段）：  
+```xml
+<hierarchy rotation="0">
+  <node className="android.widget.FrameLayout" bounds="[0,0][1080,2340]">
+    <node className="android.widget.LinearLayout" bounds="[0,50][1080,2290]">
+      <node className="android.widget.TextView" text="登录" resourceId="com.example:id/tv_login" bounds="[400,800][680,920]"/>
+      <!-- 更多嵌套节点 -->
+    </node>
+  </node>
+</hierarchy>
+```
+
+
+### 3. 获取屏幕截图 `/screenshot`
+- **功能**：获取当前屏幕的PNG截图  
+- **请求方法**：`GET`  
+- **参数**：  
+  - `quality`（可选）：图片质量（0-100，默认80）  
+
+**请求示例**（保存为图片）：  
+```bash
+curl http://localhost:9008/screenshot?quality=90 -o screenshot.png
+```
+
+**响应**：二进制PNG图片数据（可直接保存为图片文件）  
+
+
+### 4. 检查UI是否变化 `/is_ui_change`
+- **功能**：判断当前UI与上一次检查时是否变化  
+- **请求方法**：`GET`  
+- **参数**：无  
+
+**请求示例**：  
+```bash
+curl http://localhost:9008/is_ui_change
+```
+
+**响应示例**（JSON）：  
+```json
+{"changed": true}  # true表示有变化，false表示无变化
+```
+
+
+### 5. 坐标点击 `/click`
+- **功能**：模拟在指定坐标的单次点击（按下→延迟→抬起）  
+- **请求方法**：`GET`  
+- **参数**：  
+  - `x`：横坐标（整数/浮点数）  
+  - `y`：纵坐标（整数/浮点数）  
+
+**请求示例**：  
+```bash
+curl http://localhost:9008/click?x=500&y=1000
+```
+
+**响应示例**（JSON）：  
+```json
+{"success": true, "message": "坐标点击成功", "x": 500.0, "y": 1000.0}
+```
+
+
+### 6. 触摸按下 `/touch_down`
+- **功能**：模拟在指定坐标的触摸按下（不抬起，需配合`/touch_up`使用）  
+- **请求方法**：`GET`  
+- **参数**：  
+  - `x`：横坐标  
+  - `y`：纵坐标  
+
+**请求示例**：  
+```bash
+curl http://localhost:9008/touch_down?x=300&y=800
+```
+
+**响应示例**（JSON）：  
+```json
+{"success": true, "message": "触摸按下成功"}
+```
+
+
+### 7. 触摸抬起 `/touch_up`
+- **功能**：模拟在指定坐标的触摸抬起（与`/touch_down`配对使用）  
+- **请求方法**：`GET`  
+- **参数**：  
+  - `x`：横坐标  
+  - `y`：纵坐标  
+
+**请求示例**：  
+```bash
+curl http://localhost:9008/touch_up?x=300&y=800
+```
+
+**响应示例**（JSON）：  
+```json
+{"success": true, "message": "触摸抬起成功"}
+```
+
+
+### 8. 触摸滑动 `/touch_move`
+- **功能**：模拟触摸滑动（需在`/touch_down`之后、`/touch_up`之前调用）  
+- **请求方法**：`GET`  
+- **参数**：  
+  - `x`：目标横坐标  
+  - `y`：目标纵坐标  
+
+**请求示例**（配合按下/抬起完成滑动）：  
+```bash
+# 按下→滑动→抬起（模拟从(300,800)滑动到(600,800)）
+curl http://localhost:9008/touch_down?x=300&y=800
+curl http://localhost:9008/touch_move?x=450&y=800  # 中间点
+curl http://localhost:9008/touch_move?x=600&y=800  # 终点
+curl http://localhost:9008/touch_up?x=600&y=800
+```
+
+**响应示例**（JSON）：  
+```json
+{"success": true, "message": "触摸滑动成功"}
+```
+
+
+### 9. 查找单个UI元素 `/find_element`
+- **功能**：按属性查找单个UI元素（如文本、资源ID等）  
+- **请求方法**：`GET`  
+- **参数**：  
+  - `type`：查找类型（如`text`、`resourceId`、`className`）  
+  - `value`：查找值（与`type`对应，如文本内容、资源ID）  
+  - `timeout`（可选）：超时时间（毫秒，默认5000）  
+
+**请求示例**（查找文本为“登录”的元素）：  
+```bash
+curl http://localhost:9008/find_element?type=text&value=登录&timeout=3000
+```
+
+**响应示例**（JSON）：  
+```json
+{
+  "className": "android.widget.Button",
+  "resourceId": "com.example:id/btn_login",
+  "text": "登录",
+  "bounds": "[400,800][680,920]",  # 元素位置（左、上、右、下）
+  "enabled": true,
+  "visible": true
+}
+```
+
+
+### 10. 查找多个UI元素 `/find_elements`
+- **功能**：按属性查找多个符合条件的UI元素  
+- **请求方法**：`GET`  
+- **参数**：同 `/find_element`  
+
+**请求示例**（查找所有文本框）：  
+```bash
+curl http://localhost:9008/find_elements?type=className&value=android.widget.EditText
+```
+
+**响应示例**（JSON数组）：  
+```json
+[
+  {
+    "className": "android.widget.EditText",
+    "resourceId": "com.example:id/et_username",
+    "bounds": "[300,500][780,600]",
+    "text": ""
+  },
+  {
+    "className": "android.widget.EditText",
+    "resourceId": "com.example:id/et_password",
+    "bounds": "[300,650][780,750]",
+    "text": ""
+  }
+]
+```
+
+
+### 11. 文本输入 `/input`
+- **功能**：查找输入框并执行文本输入（支持清空原有内容）  
+- **请求方法**：`POST`  
+- **请求体**（JSON）：  
+  - `type`：查找输入框的类型（如`resourceId`）  
+  - `value`：查找输入框的值（如资源ID）  
+  - `text`：要输入的文本  
+  - `clear`（可选）：是否清空原有内容（默认`true`）  
+
+**请求示例**（向用户名输入框输入文本）：  
+```bash
+curl -X POST http://localhost:9008/input \
+  -H "Content-Type: application/json" \
+  -d '{"type":"resourceId", "value":"com.example:id/et_username", "text":"test_user", "clear":true}'
+```
+
+**响应示例**（JSON）：  
+```json
+{
+  "success": true,
+  "message": "输入成功",
+  "input_text": "test_user",
+  "actual_text": "test_user"
+}
+```
+
+### 12. 批量脚本示例（`/execute_json_script`）
 请求体为 JSON 数组，支持动作类型：`click`、`find_and_click`、`find_and_input`、`swipe_sequence`。
 
 ```json
